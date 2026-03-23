@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tablero de Salida - Profesores</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #34495e; color: white; padding: 20px; }
+        header { text-align: center; border-bottom: 2px solid #1abc9c; margin-bottom: 30px; }
+        #lista-alumnos { display: flex; flex-direction: column; gap: 15px; }
+        .tarjeta { 
+            background: #ecf0f1; color: #2c3e50; 
+            padding: 25px; border-radius: 10px; 
+            font-size: 2rem; font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            animation: deslizar 0.5s ease;
+            cursor: pointer; /* Indicar que se puede quitar */
+        }
+        @keyframes deslizar { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Alumnos por Salir</h1>
+    </header>
+
+    <main id="lista-alumnos">
+        </main>
+
+    <script>
+        // 1. Configuración de Firebase CORREGIDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyBRdSbW4Aj7xgHXPo4hvrYh076Ronc4Xrg",
+            authDomain: "guardia-24695.firebaseapp.com",
+            // ESTA ES LA URL CORRECTA PARA TU PROYECTO:
+            databaseURL: "https://guardia-24695-default-rtdb.firebaseio.com", 
+            projectId: "guardia-24695",
+            storageBucket: "guardia-24695.firebasestorage.app",
+            messagingSenderId: "398247161945",
+            appId: "1:398247161945:web:41ee9dc21ba3269d304148",
+            measurementId: "G-KP1DQXM8JX"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database(); 
+
+        let ultimoEscaneo = "";
+            
+            // Si no hay datos, mostrar mensaje
+            if (!datos) {
+                container.innerHTML = `<h2 style="text-align:center; opacity:0.5">Esperando salidas...</h2>`;
+                return;
+            }
+
+            // Convertir objeto a array para ordenarlos por tiempo
+            const listaOrdenada = Object.entries(datos).sort((a,b) => b[1].hora - a[1].hora);
+
+            for (let [id, alumno] of listaOrdenada) {
+                const div = document.createElement('div');
+                div.className = 'tarjeta';
+                div.innerText = alumno.nombreAlumno;
+                
+                // Opción: El profesor puede hacer clic para borrarlo al salir del aula
+                div.onclick = () => db.ref('salidas/' + id).remove();
+                
+                container.appendChild(div);
+            }
+        });
+    </script>
+</body>
+</html>
