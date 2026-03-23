@@ -10,15 +10,21 @@
     <style>
         body { font-family: 'Arial', sans-serif; background: #34495e; color: white; padding: 20px; }
         header { text-align: center; border-bottom: 2px solid #1abc9c; margin-bottom: 30px; }
-        #lista-alumnos { display: flex; flex-direction: column; gap: 15px; }
+        #lista-alumnos { display: flex; flex-direction: column; gap: 15px; max-width: 800px; margin: auto; }
         .tarjeta { 
             background: #ecf0f1; color: #2c3e50; 
             padding: 25px; border-radius: 10px; 
-            font-size: 2rem; font-weight: bold;
+            font-size: 2.2rem; font-weight: bold;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             animation: deslizar 0.5s ease;
-            cursor: pointer; /* Indicar que se puede quitar */
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .tarjeta:hover { background: #dcdde1; }
+        .btn-borrar { font-size: 1rem; background: #e74c3c; color: white; border: none; padding: 10px; border-radius: 5px; }
+        
         @keyframes deslizar { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -26,17 +32,18 @@
 
     <header>
         <h1>Alumnos por Salir</h1>
+        <p id="reloj"></p>
     </header>
 
     <main id="lista-alumnos">
-        </main>
+        <h2 style="text-align:center; opacity:0.5">Cargando tablero...</h2>
+    </main>
 
     <script>
-        // 1. Configuración de Firebase CORREGIDA
+        // 1. Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBRdSbW4Aj7xgHXPo4hvrYh076Ronc4Xrg",
             authDomain: "guardia-24695.firebaseapp.com",
-            // ESTA ES LA URL CORRECTA PARA TU PROYECTO:
             databaseURL: "https://guardia-24695-default-rtdb.firebaseio.com", 
             projectId: "guardia-24695",
             storageBucket: "guardia-24695.firebasestorage.app",
@@ -49,28 +56,40 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database(); 
 
-        let ultimoEscaneo = "";
+        // 2. ESCUCHAR LA BASE DE DATOS (Esta es la parte que faltaba)
+        db.ref('salidas').on('value', (snapshot) => {
+            const container = document.getElementById('lista-alumnos');
+            container.innerHTML = ''; // Limpiar pantalla
             
-            // Si no hay datos, mostrar mensaje
+            const datos = snapshot.val();
+            
             if (!datos) {
                 container.innerHTML = `<h2 style="text-align:center; opacity:0.5">Esperando salidas...</h2>`;
                 return;
             }
 
-            // Convertir objeto a array para ordenarlos por tiempo
+            // Convertir a lista y ordenar (el más reciente arriba)
             const listaOrdenada = Object.entries(datos).sort((a,b) => b[1].hora - a[1].hora);
 
             for (let [id, alumno] of listaOrdenada) {
                 const div = document.createElement('div');
                 div.className = 'tarjeta';
-                div.innerText = alumno.nombreAlumno;
+                div.innerHTML = `
+                    <span>${alumno.nombreAlumno}</span>
+                    <button class="btn-borrar">ENTREGADO</button>
+                `;
                 
-                // Opción: El profesor puede hacer clic para borrarlo al salir del aula
+                // Al hacer clic, se borra de la lista (porque el alumno ya salió)
                 div.onclick = () => db.ref('salidas/' + id).remove();
                 
                 container.appendChild(div);
             }
         });
+
+        // Reloj simple
+        setInterval(() => {
+            document.getElementById('reloj').innerText = new Date().toLocaleTimeString();
+        }, 1000);
     </script>
 </body>
 </html>
