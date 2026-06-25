@@ -2,94 +2,528 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Tablero de Salida - Profesores</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner de Salida - Guardia</title>
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
     <style>
-        body { font-family: 'Arial', sans-serif; background: #34495e; color: white; padding: 20px; }
-        header { text-align: center; border-bottom: 2px solid #1abc9c; margin-bottom: 30px; }
-        #lista-alumnos { display: flex; flex-direction: column; gap: 15px; max-width: 800px; margin: auto; }
-        .tarjeta { 
-            background: #ecf0f1; color: #2c3e50; 
-            padding: 25px; border-radius: 10px; 
-            font-size: 2.2rem; font-weight: bold;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            animation: deslizar 0.5s ease;
-            cursor: pointer;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #2c3e50; color: white; min-height: 100vh; }
+
+        /* ── LOGIN ── */
+        #login-screen {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
         }
-        .tarjeta:hover { background: #dcdde1; }
-        .btn-borrar { font-size: 1rem; background: #e74c3c; color: white; border: none; padding: 10px; border-radius: 5px; }
-        
-        @keyframes deslizar { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .login-card {
+            background: #1e2d3d;
+            border-radius: 16px;
+            padding: 36px 28px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 8px 32px #0005;
+        }
+        .login-card h1 { font-size: 1.4rem; margin-bottom: 6px; text-align: center; }
+        .login-card p  { font-size: 0.85rem; color: #7f8c8d; text-align: center; margin-bottom: 24px; }
+        .login-card label { display: block; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; margin-top: 14px; }
+        .login-card input {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 8px;
+            border: 2px solid #2c3e50;
+            background: #2c3e50;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .login-card input:focus { border-color: #1abc9c; }
+        #login-btn {
+            width: 100%;
+            margin-top: 22px;
+            padding: 13px;
+            font-size: 1rem;
+            font-weight: bold;
+            background: #1abc9c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #login-btn:hover  { background: #16a085; }
+        #login-btn:active { transform: scale(0.97); }
+        #login-error {
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #e74c3c;
+            text-align: center;
+            min-height: 1.2rem;
+        }
+        .login-spinner {
+            display: none;
+            width: 20px; height: 20px;
+            border: 3px solid #ffffff40;
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── APP ── */
+        #app-screen { display: none; }
+
+        /* Header con usuario y cerrar sesión */
+        #app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e2d3d;
+            padding: 10px 16px;
+            font-size: 0.85rem;
+        }
+        #app-header .user-info { color: #1abc9c; font-weight: bold; }
+        #logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #logout-btn:hover { background: #c0392b; }
+
+        /* Confirmación de cierre de sesión */
+        #logout-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000a;
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        #logout-modal.visible { display: flex; }
+        .modal-card {
+            background: #1e2d3d;
+            border-radius: 14px;
+            padding: 28px 24px;
+            max-width: 300px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 32px #0008;
+        }
+        .modal-card h2 { font-size: 1.1rem; margin-bottom: 8px; }
+        .modal-card p  { font-size: 0.85rem; color: #aaa; margin-bottom: 20px; }
+        .modal-card .modal-resumen {
+            background: #2c3e50;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            color: #1abc9c;
+        }
+        .modal-btns { display: flex; gap: 10px; }
+        .modal-btns button {
+            flex: 1; padding: 11px; border: none; border-radius: 8px;
+            font-size: 0.95rem; font-weight: bold; cursor: pointer;
+        }
+        #modal-cancel  { background: #2c3e50; color: white; }
+        #modal-confirm { background: #e74c3c; color: white; }
+        #modal-cancel:hover  { background: #34495e; }
+        #modal-confirm:hover { background: #c0392b; }
+
+        /* Contenido principal */
+        #main-content { text-align: center; }
+        #scanner-container { width: 100%; max-width: 500px; margin: auto; padding: 10px; }
+        h1 { font-size: 1.4rem; margin: 14px 0; }
+        #reader { border: 2px solid #1abc9c; border-radius: 8px; overflow: hidden; }
+        #status {
+            font-size: 1.1rem; color: #1abc9c; font-weight: bold;
+            margin-top: 10px; padding: 0 10px; min-height: 2rem; transition: color 0.3s;
+        }
+
+        /* Flash */
+        #flash {
+            position: fixed; inset: 0; opacity: 0;
+            pointer-events: none; z-index: 999; transition: opacity 0.1s;
+        }
+        #flash.active { opacity: 0.25; }
+
+        /* Toast */
+        #toast-container {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; gap: 8px; align-items: center;
+            z-index: 1000; pointer-events: none;
+        }
+        .toast {
+            background: #27ae60; color: white; font-weight: bold; font-size: 1rem;
+            padding: 12px 24px; border-radius: 50px; box-shadow: 0 4px 20px #0005;
+            opacity: 0; transform: translateY(20px) scale(0.95);
+            transition: opacity 0.25s, transform 0.25s; white-space: nowrap;
+        }
+        .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+        .toast.hide { opacity: 0; transform: translateY(-10px) scale(0.95); }
+
+        /* Historial */
+        #historial-section { max-width: 500px; margin: 10px auto 0; padding: 0 10px; text-align: left; }
+        #historial-section h2 { font-size: 0.85rem; color: #aaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        #historial-lista {
+            list-style: none; max-height: 200px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        #historial-lista::-webkit-scrollbar { width: 4px; }
+        #historial-lista::-webkit-scrollbar-thumb { background: #1abc9c55; border-radius: 4px; }
+        .historial-item {
+            display: flex; align-items: center; gap: 10px;
+            background: #1e2d3d; border-left: 3px solid #1abc9c;
+            border-radius: 6px; padding: 8px 12px;
+            animation: slideIn 0.3s ease;
+        }
+        .historial-item.manual { border-left-color: #9b59b6; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .hi-nombre { flex: 1; font-weight: bold; font-size: 0.9rem; }
+        .hi-hora   { font-size: 0.75rem; color: #7f8c8d; }
+        .hi-badge  { font-size: 0.65rem; padding: 2px 7px; border-radius: 20px; font-weight: bold; text-transform: uppercase; }
+        .hi-badge.qr     { background: #1abc9c22; color: #1abc9c; }
+        .hi-badge.manual { background: #9b59b622; color: #9b59b6; }
+
+        /* Separador */
+        .divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; padding: 0 10px; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #ffffff25; }
+        .divider span { font-size: 0.8rem; color: #aaa; white-space: nowrap; }
+
+        /* Entrada manual */
+        #manual-section { padding: 0 10px 16px; max-width: 500px; margin: auto; }
+        #manual-input {
+            width: 100%; padding: 12px 14px; font-size: 1rem; border-radius: 8px;
+            border: 2px solid #1abc9c; background: #1e2d3d; color: white;
+            outline: none; margin-bottom: 10px;
+        }
+        #manual-input::placeholder { color: #7f8c8d; }
+        #manual-input:focus { border-color: #2ecc71; }
+        #manual-btn {
+            width: 100%; padding: 12px; font-size: 1rem; font-weight: bold;
+            background: #9b59b6; color: white; border: none; border-radius: 8px;
+            cursor: pointer; transition: background 0.2s, transform 0.1s;
+        }
+        #manual-btn:hover  { background: #8e44ad; }
+        #manual-btn:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>Alumnos por Salir</h1>
-        <p id="reloj"></p>
-    </header>
+    <!-- ── PANTALLA DE LOGIN ── -->
+    <div id="login-screen">
+        <div class="login-card">
+            <h1>🔒 Acceso Guardia</h1>
+            <p>Inicia sesión para continuar</p>
+            <label>Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="correo@escuela.com" autocomplete="email" />
+            <label>Contraseña</label>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+            <button id="login-btn">Entrar</button>
+            <div class="login-spinner" id="login-spinner"></div>
+            <p id="login-error"></p>
+        </div>
+    </div>
 
-    <main id="lista-alumnos">
-        <h2 style="text-align:center; opacity:0.5">Cargando tablero...</h2>
-    </main>
+    <!-- ── PANTALLA PRINCIPAL ── -->
+    <div id="app-screen">
+
+        <!-- Header -->
+        <div id="app-header">
+            <span class="user-info" id="user-email-label">👤 —</span>
+            <button id="logout-btn">Cerrar sesión</button>
+        </div>
+
+        <!-- Flash & Toasts -->
+        <div id="flash"></div>
+        <div id="toast-container"></div>
+
+        <div id="main-content">
+            <h1>Escanear Credencial</h1>
+            <div id="scanner-container"><div id="reader"></div></div>
+            <p id="status">Esperando escaneo...</p>
+
+            <div class="divider"><span>o ingresa manualmente</span></div>
+
+            <div id="manual-section">
+                <input type="text" id="manual-input" placeholder="Nombre del alumno..." autocomplete="off" />
+                <button id="manual-btn">✏️ Registrar Salida Manual</button>
+            </div>
+
+            <div class="divider"><span>historial de esta sesión</span></div>
+            <div id="historial-section">
+                <ul id="historial-lista"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── MODAL CERRAR SESIÓN ── -->
+    <div id="logout-modal">
+        <div class="modal-card">
+            <h2>¿Cerrar sesión?</h2>
+            <p>Resumen de esta sesión:</p>
+            <div class="modal-resumen" id="modal-resumen">0 alumnos registrados</div>
+            <div class="modal-btns">
+                <button id="modal-cancel">Cancelar</button>
+                <button id="modal-confirm">Cerrar sesión</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // 1. Configuración de Firebase
+        // ── Firebase ──────────────────────────────────────────────
         const firebaseConfig = {
             apiKey: "AIzaSyBRdSbW4Aj7xgHXPo4hvrYh076Ronc4Xrg",
             authDomain: "guardia-24695.firebaseapp.com",
-            databaseURL: "https://guardia-24695-default-rtdb.firebaseio.com/", 
+            databaseURL: "https://guardia-24695-default-rtdb.firebaseio.com",
             projectId: "guardia-24695",
             storageBucket: "guardia-24695.firebasestorage.app",
             messagingSenderId: "398247161945",
             appId: "1:398247161945:web:41ee9dc21ba3269d304148",
             measurementId: "G-KP1DQXM8JX"
         };
-
-        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database(); 
+        const auth = firebase.auth();
+        const db   = firebase.database();
 
-        // 2. ESCUCHAR LA BASE DE DATOS (Esta es la parte que faltaba)
-        db.ref('salidas').on('value', (snapshot) => {
-            const container = document.getElementById('lista-alumnos');
-            container.innerHTML = ''; // Limpiar pantalla
-            
-            const datos = snapshot.val();
-            
-            if (!datos) {
-                container.innerHTML = `<h2 style="text-align:center; opacity:0.5">Esperando salidas...</h2>`;
-                return;
-            }
+        let ultimoEscaneo = "";
+        let audioCtx      = null;
+        let contadorSesion = 0;
+        let scannerIniciado = false;
+        let html5QrCode = null;
 
-            // Convertir a lista y ordenar (el más reciente arriba)
-            const listaOrdenada = Object.entries(datos).sort((a,b) => b[1].hora - a[1].hora);
-
-            for (let [id, alumno] of listaOrdenada) {
-                const div = document.createElement('div');
-                div.className = 'tarjeta';
-                div.innerHTML = `
-                    <span>${alumno.nombreAlumno}</span>
-                    <button class="btn-borrar">ENTREGADO</button>
-                `;
-                
-                // Al hacer clic, se borra de la lista (porque el alumno ya salió)
-                div.onclick = () => db.ref('salidas/' + id).remove();
-                
-                container.appendChild(div);
+        // ── Auth: observer ────────────────────────────────────────
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                mostrarApp(user);
+            } else {
+                mostrarLogin();
             }
         });
 
-        // Reloj simple
-        setInterval(() => {
-            document.getElementById('reloj').innerText = new Date().toLocaleTimeString();
-        }, 1000);
+        // ── Login ─────────────────────────────────────────────────
+        const loginBtn      = document.getElementById('login-btn');
+        const loginSpinner  = document.getElementById('login-spinner');
+        const loginError    = document.getElementById('login-error');
+
+        loginBtn.addEventListener('click', async () => {
+            const email    = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!email || !password) {
+                loginError.innerText = 'Completa todos los campos.';
+                return;
+            }
+            loginBtn.style.display    = 'none';
+            loginSpinner.style.display = 'block';
+            loginError.innerText      = '';
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (e) {
+                loginBtn.style.display    = 'block';
+                loginSpinner.style.display = 'none';
+                switch (e.code) {
+                    case 'auth/user-not-found':
+                    case 'auth/wrong-password':
+                        loginError.innerText = '❌ Correo o contraseña incorrectos.'; break;
+                    case 'auth/invalid-email':
+                        loginError.innerText = '❌ Correo no válido.'; break;
+                    case 'auth/too-many-requests':
+                        loginError.innerText = '⚠️ Demasiados intentos. Espera un momento.'; break;
+                    default:
+                        loginError.innerText = '❌ Error: ' + e.message;
+                }
+            }
+        });
+
+        // Enter en login
+        ['login-email','login-password'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', e => {
+                if (e.key === 'Enter') loginBtn.click();
+            });
+        });
+
+        // ── Mostrar pantallas ─────────────────────────────────────
+        function mostrarLogin() {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('app-screen').style.display   = 'none';
+            document.getElementById('login-btn').style.display    = 'block';
+            document.getElementById('login-spinner').style.display = 'none';
+            document.getElementById('login-email').value    = '';
+            document.getElementById('login-password').value = '';
+            loginError.innerText = '';
+            if (html5QrCode && scannerIniciado) {
+                html5QrCode.stop().catch(() => {});
+                scannerIniciado = false;
+            }
+        }
+
+        function mostrarApp(user) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display   = 'block';
+            document.getElementById('user-email-label').innerText = '👤 ' + user.email;
+            contadorSesion = 0;
+            document.getElementById('historial-lista').innerHTML = '';
+            document.getElementById('status').innerText = 'Esperando escaneo...';
+            document.getElementById('status').style.color = '#1abc9c';
+            iniciarScanner();
+        }
+
+        // ── Escáner ───────────────────────────────────────────────
+        function iniciarScanner() {
+            if (scannerIniciado) return;
+            html5QrCode = new Html5Qrcode('reader');
+            html5QrCode.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    if (decodedText === ultimoEscaneo) return;
+                    ultimoEscaneo = decodedText;
+                    registrarSalida(decodedText, 'qr');
+                    setTimeout(() => { ultimoEscaneo = ''; }, 3000);
+                },
+                () => {}
+            ).then(() => {
+                scannerIniciado = true;
+            }).catch(() => {
+                const s = document.getElementById('status');
+                s.innerText   = '❌ Error de cámara: Usa HTTPS y da permisos.';
+                s.style.color = '#e74c3c';
+            });
+        }
+
+        // ── Logout ────────────────────────────────────────────────
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            document.getElementById('modal-resumen').innerText =
+                `${contadorSesion} alumno${contadorSesion !== 1 ? 's' : ''} registrado${contadorSesion !== 1 ? 's' : ''} en esta sesión`;
+            document.getElementById('logout-modal').classList.add('visible');
+        });
+
+        document.getElementById('modal-cancel').addEventListener('click', () => {
+            document.getElementById('logout-modal').classList.remove('visible');
+        });
+
+        document.getElementById('modal-confirm').addEventListener('click', async () => {
+            document.getElementById('logout-modal').classList.remove('visible');
+            await auth.signOut();
+        });
+
+        // ── Registrar salida ──────────────────────────────────────
+        function registrarSalida(nombre, tipo = 'qr') {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText   = `Enviando: ${nombre}...`;
+            statusEl.style.color = '#f1c40f';
+
+            const user = auth.currentUser;
+            db.ref('salidas').push({
+                nombreAlumno: nombre,
+                hora: Date.now(),
+                tipo,
+                registradoPor: user ? user.email : 'desconocido'
+            }).then(() => {
+                contadorSesion++;
+                statusEl.innerText   = `✅ ${nombre} registrado`;
+                statusEl.style.color = '#2ecc71';
+                beep(tipo);
+                flashPantalla(tipo === 'manual' ? '#9b59b6' : '#2ecc71');
+                mostrarToast(`✅ ${nombre} — salida registrada`);
+                agregarAlHistorial(nombre, tipo);
+            }).catch((err) => {
+                statusEl.innerText   = `❌ Error: ${err.message}`;
+                statusEl.style.color = '#e74c3c';
+            });
+        }
+
+        // ── Entrada manual ────────────────────────────────────────
+        document.getElementById('manual-btn').addEventListener('click', () => {
+            const nombre = document.getElementById('manual-input').value.trim();
+            if (!nombre) {
+                const s = document.getElementById('status');
+                s.innerText   = '⚠️ Escribe el nombre del alumno.';
+                s.style.color = '#e67e22';
+                return;
+            }
+            registrarSalida(nombre, 'manual');
+            document.getElementById('manual-input').value = '';
+        });
+
+        document.getElementById('manual-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('manual-btn').click();
+        });
+
+        // ── Sonido ────────────────────────────────────────────────
+        function beep(tipo = 'qr') {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc  = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.value     = 0.12;
+                osc.frequency.value = tipo === 'manual' ? 820 : 1000;
+                osc.type            = 'sine';
+                osc.start();
+                if (tipo === 'manual') {
+                    setTimeout(() => { osc.frequency.value = 1040; }, 100);
+                    setTimeout(() => osc.stop(), 220);
+                } else {
+                    setTimeout(() => osc.stop(), 130);
+                }
+            } catch (e) { console.log('Audio bloqueado:', e); }
+        }
+
+        // ── Flash ─────────────────────────────────────────────────
+        function flashPantalla(color = '#2ecc71') {
+            const f = document.getElementById('flash');
+            f.style.background = color;
+            f.classList.add('active');
+            setTimeout(() => f.classList.remove('active'), 200);
+        }
+
+        // ── Toast ─────────────────────────────────────────────────
+        function mostrarToast(mensaje) {
+            const container = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerText = mensaje;
+            container.prepend(t);
+            requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+            setTimeout(() => {
+                t.classList.add('hide');
+                setTimeout(() => t.remove(), 300);
+            }, 2800);
+        }
+
+        // ── Historial ─────────────────────────────────────────────
+        function agregarAlHistorial(nombre, tipo) {
+            const lista = document.getElementById('historial-lista');
+            const hora  = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const li    = document.createElement('li');
+            li.className = `historial-item ${tipo}`;
+            li.innerHTML = `
+                <span class="hi-nombre">${nombre}</span>
+                <span class="hi-hora">${hora}</span>
+                <span class="hi-badge ${tipo}">${tipo === 'manual' ? '✏️ Manual' : '📷 QR'}</span>
+            `;
+            lista.prepend(li);
+        }
     </script>
 </body>
 </html>
